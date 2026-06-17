@@ -1,0 +1,90 @@
+====================================================
+  CONCLUSIONES Y HALLAZGOS - DEMOBLAZE E2E TEST
+====================================================
+
+EJERCICIO: Prueba funcional automatizada (E2E) - Flujo de compra
+SITIO: https://www.demoblaze.com/
+FRAMEWORK: Serenity BDD 4.x + Cucumber + JUnit 4 + Selenium
+
+----------------------------------------------------
+HALLAZGOS TECNICOS DEL SITIO
+----------------------------------------------------
+
+1. ALERT NATIVO AL AGREGAR AL CARRITO
+   DemoBlaze usa un alert nativo del navegador (window.alert) al hacer
+   click en "Add to cart". Esto requiere manejar el driver.switchTo().alert()
+   explicitamente. Si no se acepta el alert, el siguiente paso falla porque
+   el foco del driver queda bloqueado en el popup.
+
+2. CARGA ASINCRONA DEL CARRITO
+   El carrito no carga de forma sincrona. Los productos agregados se
+   recuperan via API REST (fetch/Ajax) y pueden tardar entre 1 y 4 segundos
+   en aparecer en la tabla #tbodyid. Fue necesario agregar esperas explicitas
+   (waitFor + Thread.sleep de respaldo) para evitar falsos negativos.
+
+3. PAGINACION DE PRODUCTOS
+   La pagina principal de DemoBlaze pagina los productos (muestra solo
+   algunos a la vez). Los productos "Samsung galaxy s6" y "Nokia lumia 1520"
+   estan disponibles en la primera pagina del catalogo, lo que los hace
+   buenos candidatos para pruebas sin necesidad de navegar entre paginas.
+
+4. MODAL DE COMPRA (SweetAlert)
+   La confirmacion de compra usa la libreria SweetAlert (no un alert nativo).
+   El selector correcto es ".sweet-alert h2" para el titulo "Thank you for
+   your purchase!" y ".sweet-alert .confirm" para el boton OK.
+   Intentar usar alert() de Selenium para este modal falla porque es un
+   elemento HTML, no un alert nativo.
+
+5. FORMULARIO PLACE ORDER
+   El boton "Place Order" usa el atributo data-target="#orderModal", lo que
+   indica que abre un modal de Bootstrap. Fue necesario esperar a que el
+   modal sea visible antes de interactuar con los campos.
+
+----------------------------------------------------
+CONCLUSIONES DE LA AUTOMATIZACION
+----------------------------------------------------
+
+1. SERENITY BDD ES ADECUADO PARA ESTE TIPO DE PRUEBAS
+   La integracion Serenity + Cucumber permite escribir pruebas en lenguaje
+   natural (Gherkin en espanol), lo que facilita la comunicacion entre el
+   equipo de QA y los stakeholders del negocio.
+
+2. EL PATRON PAGE OBJECT MEJORA EL MANTENIMIENTO
+   Separar la logica de cada pantalla (HomePage, ProductPage, CartPage) en
+   clases independientes hace que los cambios en el UI solo requieran
+   modificar una clase, no todos los tests.
+
+3. LAS ESPERAS EXPLICITAS SON CRITICAS
+   El sitio demoblaze.com tiene respuestas lentas y asincronas. Usar
+   waitFor(ExpectedConditions...) es indispensable para evitar
+   ElementNotInteractableException y StaleElementReferenceException.
+   No se recomienda usar Thread.sleep() como unica estrategia, aunque
+   se uso como respaldo en casos criticos.
+
+4. FRAGILIDAD DEL SITIO DE PRUEBA
+   DemoBlaze es un sitio de practica con infraestructura basica. Puede
+   presentar:
+   - Lentitud en la carga de productos del carrito
+   - Comportamiento inconsistente del alert
+   - Disponibilidad variable del servicio
+   Esto puede causar flakiness (pruebas inestables) que no son errores
+   de automatizacion sino del entorno.
+
+5. REPORTES DE SERENITY COMO EVIDENCIA
+   Los reportes HTML generados en target/site/serenity/ incluyen
+   capturas de pantalla automaticas en cada paso, lo que sirve como
+   evidencia formal de ejecucion sin necesidad de grabaciones manuales.
+
+6. MEJORAS POTENCIALES (fuera del alcance minimo)
+   - Agregar tags @smoke y @regression para diferentes suites
+   - Implementar el patron Screenplay (Actor/Task/Question) de Serenity
+   - Parametrizar los datos de prueba con un archivo externo (Excel/JSON)
+   - Agregar pruebas negativas: carrito vacio, formulario incompleto
+   - Integrar con CI/CD (GitHub Actions / Jenkins)
+   - Agregar ejecucion en modo headless para entornos sin GUI
+
+----------------------------------------------------
+AUTOR
+----------------------------------------------------
+QA Junior - Ejercicio practico de automatizacion E2E
+Fecha: Junio 2026
