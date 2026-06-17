@@ -1,36 +1,40 @@
 package com.demoblaze.pages;
 
 import net.serenitybdd.core.pages.PageObject;
-import net.serenitybdd.core.pages.WebElementFacade;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
  * Page Object para la página principal de DemoBlaze.
- * Contiene los locators y métodos para interactuar con el catálogo de productos.
+ * Los productos en el catálogo usan el selector: a.hrefch
+ * El carrito está en: #cartur
  */
 public class HomePage extends PageObject {
 
     private static final String URL = "https://www.demoblaze.com/";
 
     /**
-     * Navega a la URL principal de DemoBlaze.
+     * Abre la página principal y espera a que los productos carguen.
      */
     public void abrirPagina() {
         getDriver().get(URL);
-        waitFor(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
+        new WebDriverWait(getDriver(), Duration.ofSeconds(15))
+                .until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
     }
 
     /**
-     * Hace click en un producto buscándolo por nombre exacto (ignora mayúsculas).
-     *
-     * @param nombreProducto nombre del producto a seleccionar
+     * Busca un producto por nombre en el catálogo y hace click sobre él.
+     * Usa CSS selector correcto con By.cssSelector para evitar que
+     * Serenity lo interprete como XPath.
      */
     public void seleccionarProducto(String nombreProducto) {
-        waitFor(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
+        WebDriverWait wait = new WebDriverWait(getDriver(), Duration.ofSeconds(15));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
 
         List<WebElement> productos = getDriver().findElements(By.cssSelector("a.hrefch"));
         for (WebElement producto : productos) {
@@ -39,23 +43,26 @@ public class HomePage extends PageObject {
                 return;
             }
         }
-        throw new RuntimeException("Producto no encontrado en la lista: " + nombreProducto);
+        throw new RuntimeException("Product not found in catalog: " + nombreProducto);
     }
 
     /**
-     * Hace click en el enlace del carrito en la barra de navegación.
+     * Navega al carrito de compras.
      */
     public void irAlCarrito() {
-        WebElementFacade cartIcon = findBy("#cartur");
-        waitFor(cartIcon).waitUntilClickable();
-        cartIcon.click();
+        WebDriverWait wait = new WebDriverWait(getDriver(), Duration.ofSeconds(10));
+        WebElement cartLink = wait.until(
+                ExpectedConditions.elementToBeClickable(By.id("cartur"))
+        );
+        cartLink.click();
     }
 
     /**
-     * Regresa a la página de inicio.
+     * Regresa a la página principal y espera a que los productos carguen.
      */
     public void irAlInicio() {
         getDriver().get(URL);
-        waitFor(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
+        new WebDriverWait(getDriver(), Duration.ofSeconds(15))
+                .until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.hrefch")));
     }
 }

@@ -4,87 +4,167 @@
 
 EJERCICIO: Prueba funcional automatizada (E2E) - Flujo de compra
 SITIO: https://www.demoblaze.com/
-FRAMEWORK: Serenity BDD 4.x + Cucumber + JUnit 4 + Selenium
+FRAMEWORK: Serenity BDD 4.0.46 + Cucumber 7 + JUnit 4 + Selenium 4
+RESULTADO FINAL: BUILD SUCCESS - 1 test ejecutado, 1 pasado, 0 fallidos
+DURACION: 4s 609ms
 
-----------------------------------------------------
-HALLAZGOS TECNICOS DEL SITIO
-----------------------------------------------------
+====================================================
+ERRORES ENCONTRADOS DURANTE EL DESARROLLO Y SUS SOLUCIONES
+====================================================
+
+ERROR 1: serenity-bom version no disponible en Maven Central
+------------------------------------------------------------
+Mensaje: "Non-resolvable import POM: net.serenity-bdd:serenity-bom:pom:4.2.34"
+
+Causa: El BOM (Bill of Materials) de Serenity solo existe en Maven Central
+a partir de la version 5.3.7. La version 4.2.34 usada inicialmente no existe
+como artefacto BOM en el repositorio central.
+
+Solucion: Se eliminó el bloque <dependencyManagement> con el BOM y se
+especificó la versión explícitamente en cada dependencia usando la version
+4.0.46, que sí está disponible y verificada en Maven Central.
+
+Lección: Antes de referenciar cualquier versión en un pom.xml, verificar
+su existencia en https://repo.maven.apache.org/maven2/ consultando el
+archivo maven-metadata.xml del artefacto.
+
+------------------------------------------------------------
+ERROR 2: Feature de Cucumber no parseado (# language: es)
+------------------------------------------------------------
+Mensaje: "FeatureParser Failed to parse resource... expected: #FeatureLine, got 'Feature:...'"
+
+Causa: La directiva "# language: es" en el archivo .feature no fue
+procesada correctamente por la versión de Gherkin incluida en
+serenity-cucumber:4.0.46, dejando el parser en modo inglés e
+interpretando "Feature:", "Scenario:", "Given", etc. como tokens
+inválidos.
+
+Solucion: Se reescribió el archivo .feature completamente en inglés
+(Feature, Scenario, Given, When, Then, And) que es el idioma por defecto
+de Cucumber y garantiza compatibilidad con todas las versiones del parser.
+Las anotaciones del step definition se actualizaron de
+"import io.cucumber.java.es.*" a "import io.cucumber.java.en.*".
+
+Lección: Para evitar problemas de compatibilidad de idioma en Gherkin,
+usar inglés como idioma base es la práctica más segura y portable.
+
+------------------------------------------------------------
+ERROR 3: Selector CSS interpretado como XPath por Serenity
+------------------------------------------------------------
+Mensaje: "Unable to locate element: {"method":"xpath","selector":"a.btn.btn-success.btn-lg"}"
+
+Causa: El método findBy() de PageObject de Serenity, cuando recibe una
+cadena de texto como "a.btn.btn-success.btn-lg", la interpreta
+internamente como XPath en lugar de CSS selector. Un CSS selector como
+"a.btn.btn-success" es inválido como XPath, por lo que el elemento nunca
+se encuentra.
+
+Solucion: Se reemplazó completamente el uso de findBy() y WebElementFacade
+por WebDriverWait + By.cssSelector() / By.xpath() / By.id() de Selenium
+puro en todos los Page Objects. Esto da control total sobre el tipo de
+selector usado.
+
+Adicionalmente, el botón "Add to cart" se localizó por texto visible con
+XPath: //a[contains(text(),'Add to cart')]
+en lugar de por clases CSS, lo que lo hace más robusto frente a cambios de
+estilos en la UI.
+
+Lección: En Serenity BDD, cuando se necesita precisión en el tipo de
+selector, es más seguro usar WebDriverWait con By.* de Selenium directamente
+que depender de la inferencia automática de findBy().
+
+====================================================
+HALLAZGOS TECNICOS DEL SITIO DEMOBLAZE
+====================================================
 
 1. ALERT NATIVO AL AGREGAR AL CARRITO
-   DemoBlaze usa un alert nativo del navegador (window.alert) al hacer
-   click en "Add to cart". Esto requiere manejar el driver.switchTo().alert()
-   explicitamente. Si no se acepta el alert, el siguiente paso falla porque
-   el foco del driver queda bloqueado en el popup.
+   DemoBlaze dispara un alert nativo del navegador (window.alert) al
+   hacer click en "Add to cart". Se requiere driver.switchTo().alert().accept()
+   para cerrar el popup y devolver el foco al driver. Si no se acepta,
+   cualquier interacción posterior lanza una UnhandledAlertException.
 
 2. CARGA ASINCRONA DEL CARRITO
-   El carrito no carga de forma sincrona. Los productos agregados se
-   recuperan via API REST (fetch/Ajax) y pueden tardar entre 1 y 4 segundos
-   en aparecer en la tabla #tbodyid. Fue necesario agregar esperas explicitas
-   (waitFor + Thread.sleep de respaldo) para evitar falsos negativos.
+   Los productos en el carrito se recuperan vía API REST de forma asíncrona.
+   Pueden tardar entre 1 y 4 segundos en aparecer en la tabla #tbodyid.
+   Se usó numberOfElementsToBeMoreThan() de ExpectedConditions combinado
+   con una espera adicional (Thread.sleep) para garantizar que ambos
+   ítems estén cargados antes de contarlos.
 
-3. PAGINACION DE PRODUCTOS
-   La pagina principal de DemoBlaze pagina los productos (muestra solo
-   algunos a la vez). Los productos "Samsung galaxy s6" y "Nokia lumia 1520"
-   estan disponibles en la primera pagina del catalogo, lo que los hace
-   buenos candidatos para pruebas sin necesidad de navegar entre paginas.
+3. CONFIRMACION CON SWEETALERT
+   La pantalla de confirmación final ("Thank you for your purchase!") usa
+   la librería SweetAlert, que renderiza un modal HTML (no un alert nativo
+   del navegador). El selector correcto es:
+     - Título: .sweet-alert h2
+     - Botón OK: .sweet-alert button.confirm
+   Intentar manejar esta confirmación con driver.switchTo().alert() falla
+   porque SweetAlert es un elemento del DOM, no un alert de JavaScript.
 
-4. MODAL DE COMPRA (SweetAlert)
-   La confirmacion de compra usa la libreria SweetAlert (no un alert nativo).
-   El selector correcto es ".sweet-alert h2" para el titulo "Thank you for
-   your purchase!" y ".sweet-alert .confirm" para el boton OK.
-   Intentar usar alert() de Selenium para este modal falla porque es un
-   elemento HTML, no un alert nativo.
+4. FORMULARIO PLACE ORDER CON BOOTSTRAP MODAL
+   El botón "Place Order" abre un modal de Bootstrap (#orderModal).
+   Es necesario esperar a que el modal sea visible antes de interactuar
+   con los campos. El selector del botón de confirmación dentro del
+   modal requiere contexto: //div[@id='orderModal']//button[contains(text(),'Purchase')]
 
-5. FORMULARIO PLACE ORDER
-   El boton "Place Order" usa el atributo data-target="#orderModal", lo que
-   indica que abre un modal de Bootstrap. Fue necesario esperar a que el
-   modal sea visible antes de interactuar con los campos.
+5. SELECTOR DE PRODUCTOS EN CATÁLOGO
+   Los enlaces de productos en la página principal usan la clase CSS
+   "hrefch" (selector: a.hrefch). La búsqueda por texto con equalsIgnoreCase
+   garantiza que el producto se encuentre independientemente del capitalizado.
 
-----------------------------------------------------
-CONCLUSIONES DE LA AUTOMATIZACION
-----------------------------------------------------
+====================================================
+CONCLUSIONES GENERALES
+====================================================
 
-1. SERENITY BDD ES ADECUADO PARA ESTE TIPO DE PRUEBAS
-   La integracion Serenity + Cucumber permite escribir pruebas en lenguaje
-   natural (Gherkin en espanol), lo que facilita la comunicacion entre el
-   equipo de QA y los stakeholders del negocio.
+1. SERENITY BDD ES ADECUADO PARA PRUEBAS E2E
+   La integración Serenity + Cucumber permite escribir pruebas legibles en
+   formato BDD (Gherkin), con reportes HTML automáticos que incluyen
+   capturas de pantalla por paso. Esto sirve como evidencia formal sin
+   necesidad de grabaciones manuales.
 
 2. EL PATRON PAGE OBJECT MEJORA EL MANTENIMIENTO
-   Separar la logica de cada pantalla (HomePage, ProductPage, CartPage) en
-   clases independientes hace que los cambios en el UI solo requieran
-   modificar una clase, no todos los tests.
+   Separar la lógica de cada pantalla (HomePage, ProductPage, CartPage)
+   en clases independientes hace que los cambios en el UI solo requieran
+   modificar una clase. Los step definitions permanecen estables.
 
-3. LAS ESPERAS EXPLICITAS SON CRITICAS
-   El sitio demoblaze.com tiene respuestas lentas y asincronas. Usar
-   waitFor(ExpectedConditions...) es indispensable para evitar
-   ElementNotInteractableException y StaleElementReferenceException.
-   No se recomienda usar Thread.sleep() como unica estrategia, aunque
-   se uso como respaldo en casos criticos.
+3. LAS ESPERAS EXPLICITAS SON CRITICAS EN SITIOS ASINCRONOS
+   DemoBlaze depende de APIs para cargar datos. Usar
+   WebDriverWait + ExpectedConditions es indispensable para evitar
+   NoSuchElementException y StaleElementReferenceException.
+   Se recomienda evitar Thread.sleep() como estrategia principal.
 
-4. FRAGILIDAD DEL SITIO DE PRUEBA
-   DemoBlaze es un sitio de practica con infraestructura basica. Puede
-   presentar:
-   - Lentitud en la carga de productos del carrito
-   - Comportamiento inconsistente del alert
-   - Disponibilidad variable del servicio
-   Esto puede causar flakiness (pruebas inestables) que no son errores
-   de automatizacion sino del entorno.
+4. VERIFICAR VERSIONES ANTES DE CONFIGURAR EL POM
+   La compatibilidad de versiones en el ecosistema Maven es un punto
+   crítico. Las versiones deben verificarse directamente en Maven Central
+   antes de usarlas para evitar errores de resolución de dependencias.
 
-5. REPORTES DE SERENITY COMO EVIDENCIA
-   Los reportes HTML generados en target/site/serenity/ incluyen
-   capturas de pantalla automaticas en cada paso, lo que sirve como
-   evidencia formal de ejecucion sin necesidad de grabaciones manuales.
+5. USAR SELENIUM PURO CUANDO SEA NECESARIO
+   Serenity BDD agrega abstracciones útiles, pero en algunos casos
+   (como la inferencia de tipo de selector) puede generar comportamientos
+   inesperados. Usar By.* de Selenium directamente con WebDriverWait es
+   una alternativa más predecible y controlada.
 
-6. MEJORAS POTENCIALES (fuera del alcance minimo)
-   - Agregar tags @smoke y @regression para diferentes suites
-   - Implementar el patron Screenplay (Actor/Task/Question) de Serenity
-   - Parametrizar los datos de prueba con un archivo externo (Excel/JSON)
-   - Agregar pruebas negativas: carrito vacio, formulario incompleto
-   - Integrar con CI/CD (GitHub Actions / Jenkins)
-   - Agregar ejecucion en modo headless para entornos sin GUI
+6. MEJORAS POTENCIALES (fuera del alcance mínimo del ejercicio)
+   - Implementar el patrón Screenplay (Actor/Task/Question) de Serenity
+   - Parametrizar datos de prueba con archivo externo (JSON/CSV)
+   - Agregar pruebas negativas: carrito vacío, formulario incompleto
+   - Integrar con CI/CD (GitHub Actions)
+   - Ejecución en modo headless para entornos sin interfaz gráfica
+   - Agregar tags @smoke / @regression para diferentes suites de prueba
 
-----------------------------------------------------
+====================================================
+RESULTADO DE EJECUCION
+====================================================
+
+Comando ejecutado : mvn clean verify
+Resultado         : BUILD SUCCESS
+Tests ejecutados  : 1
+Tests pasados     : 1
+Tests fallidos    : 0
+Duracion total    : 42.857 s (incluye descarga de dependencias)
+Duracion del test : 4s 609ms
+Reporte generado  : target/site/serenity/index.html
+
+====================================================
 AUTOR
-----------------------------------------------------
-QA Junior - Ejercicio practico de automatizacion E2E
+====================================================
+QA Junior - Ejercicio práctico de automatización E2E
 Fecha: Junio 2026

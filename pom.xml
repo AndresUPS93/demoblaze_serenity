@@ -15,42 +15,33 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <serenity.version>4.2.34</serenity.version>
-        <cucumber.version>7.18.1</cucumber.version>
+        <!-- Versión verificada disponible en Maven Central -->
+        <serenity.version>4.0.46</serenity.version>
         <junit.version>4.13.2</junit.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>net.serenity-bdd</groupId>
-                <artifactId>serenity-bom</artifactId>
-                <version>${serenity.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- Serenity Core -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-core</artifactId>
+            <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Serenity + JUnit -->
+        <!-- Serenity + JUnit 4 -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-junit</artifactId>
+            <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Serenity + Cucumber -->
+        <!-- Serenity + Cucumber 7 -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-cucumber</artifactId>
+            <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -62,7 +53,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- SLF4J -->
+        <!-- SLF4J - logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
@@ -73,7 +64,7 @@
 
     <build>
         <plugins>
-            <!-- Maven Surefire Plugin para correr tests -->
+            <!-- Maven Surefire: ejecuta los tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -88,14 +79,11 @@
                 </configuration>
             </plugin>
 
-            <!-- Serenity Maven Plugin para generar reportes -->
+            <!-- Serenity Maven Plugin: genera el reporte HTML -->
             <plugin>
                 <groupId>net.serenity-bdd.maven.plugins</groupId>
                 <artifactId>serenity-maven-plugin</artifactId>
                 <version>${serenity.version}</version>
-                <configuration>
-                    <tags></tags>
-                </configuration>
                 <executions>
                     <execution>
                         <id>serenity-reports</id>

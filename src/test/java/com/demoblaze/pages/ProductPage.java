@@ -1,32 +1,43 @@
 package com.demoblaze.pages;
 
 import net.serenitybdd.core.pages.PageObject;
-import net.serenitybdd.core.pages.WebElementFacade;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
 
 /**
- * Page Object para la página de detalle de un producto.
- * Permite agregar el producto al carrito y manejar el alert de confirmación.
+ * Page Object para la página de detalle de un producto en DemoBlaze.
+ *
+ * Selector del botón "Add to cart":
+ *   <a onclick="addToCart(1)" class="btn btn-success btn-lg">Add to cart</a>
+ * Se localiza por texto visible para mayor robustez.
  */
 public class ProductPage extends PageObject {
 
     /**
-     * Hace click en el botón "Add to cart" y acepta el alert de confirmación.
-     * DemoBlaze muestra un alert nativo del navegador al agregar al carrito.
+     * Hace click en el botón "Add to cart" y acepta el alert nativo del navegador.
      */
     public void agregarAlCarrito() {
-        // Esperar a que el botón "Add to cart" aparezca y sea clickeable
-        waitFor(ExpectedConditions.elementToBeClickable(By.cssSelector("a.btn.btn-success.btn-lg")));
-        WebElementFacade addToCartButton = findBy("a.btn.btn-success.btn-lg");
+        WebDriverWait wait = new WebDriverWait(getDriver(), Duration.ofSeconds(15));
+
+        // Localizar el botón por su texto — más robusto que por clase
+        By addToCartLocator = By.xpath("//a[contains(text(),'Add to cart')]");
+
+        // Esperar a que el botón esté presente en el DOM y sea clickeable
+        WebElement addToCartButton = wait.until(
+                ExpectedConditions.elementToBeClickable(addToCartLocator)
+        );
         addToCartButton.click();
 
-        // Esperar y aceptar el alert nativo del navegador
+        // DemoBlaze usa un alert nativo del navegador al agregar al carrito
         try {
-            waitFor(ExpectedConditions.alertIsPresent());
+            wait.until(ExpectedConditions.alertIsPresent());
             getDriver().switchTo().alert().accept();
         } catch (Exception e) {
-            System.out.println("No se detectó alert después de agregar al carrito: " + e.getMessage());
+            System.out.println("No alert detected after adding to cart: " + e.getMessage());
         }
     }
 }

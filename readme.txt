@@ -16,7 +16,7 @@ TECNOLOGIAS UTILIZADAS
 -----------------------
 - Java 11+
 - Maven 3.6+
-- Serenity BDD 4.2.34
+- Serenity BDD 4.0.46
 - Cucumber 7 (BDD / Gherkin)
 - JUnit 4
 - Selenium WebDriver (ChromeDriver con autodownload)
